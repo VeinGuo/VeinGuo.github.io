@@ -1,0 +1,79 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><title> autoreleasepool是如何实现的？ · Vein</title><meta name="description" content="autoreleasepool是如何实现的？ - Vein"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/css/apollo.css"><link rel="search" type="application/opensearchdescription+xml" href="https://github.com/VeinGuo/atom.xml" title="Vein"></head><body><div class="wrap"><header><a href="/" class="logo-link"><img src="/favicon.png" alt="logo"></a><ul class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" class="nav-list-link">BLOG</a></li><li class="nav-list-item"><a href="/archives/" target="_self" class="nav-list-link">ARCHIVE</a></li><li class="nav-list-item"><a href="http://weibo.com/woshirucichenlun" target="_blank" class="nav-list-link">WEIBO</a></li><li class="nav-list-item"><a href="https://github.com/VeinGuo" target="_blank" class="nav-list-link">GITHUB</a></li><li class="nav-list-item"><a href="/atom.xml" target="_self" class="nav-list-link">RSS</a></li></ul></header><main class="container"><div class="post"><article class="post-block"><h1 class="post-title">autoreleasepool是如何实现的？</h1><div class="post-info">Dec 13, 2016</div><div class="post-content"><p>虽然在ARC时代我们可以完全不知道<code>Autorelease</code>就能管理好内存，但在了解<code>objc</code>内存管理还是十分重要的，在阅读了书籍和一些干货并动手验证之后，决定总结<code>autoreleasePool</code>的实现。</p>
+<hr>
+<h2 id="什么是autorelease"><a href="#什么是autorelease" class="headerlink" title="什么是autorelease"></a>什么是autorelease</h2><p><code>autoreleasePool</code>如何实现需要先知道什么是<code>autorelease</code>？</p>
+<p><code>autorelease</code>类似于C语言中<a href="https://en.wikipedia.org/wiki/Automatic_variable" target="_blank" rel="external">Automatic variable</a>自动变量，程序执行时，若某自动变量超出其作用域，该自动变量将被自动废弃。</p>
+<h2 id="autorelease何时释放"><a href="#autorelease何时释放" class="headerlink" title="autorelease何时释放"></a>autorelease何时释放</h2><p>面试时提问<code>objc</code>内存管理基本都会问到<code>autorelease</code>何时释放,在没有使用<code>@autoreleasepool</code>的情况,<code>autorelease</code>对象是在当前的<code>runloop</code>迭代结束时释放。</p>
+<p>每个runloop中都会创建一个 <code>autoreleasepool</code> 并在runloop迭代结束进行释放。</p>
+<p>如果是手动创建<code>autoreleasepool</code>,自己创建Pool并释放：</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// MRC</span></div><div class="line"><span class="built_in">NSAutoreleasePool</span> *pool = [<span class="built_in">NSAutoreleasePool</span> alloc] init];</div><div class="line"></div><div class="line"><span class="keyword">id</span> obj = [<span class="built_in">NSObject</span> alloc] init];</div><div class="line">[obj autorelease];</div><div class="line">[pool drain];</div><div class="line"></div><div class="line"><span class="comment">// ARC</span></div><div class="line"><span class="keyword">@autoreleasepool</span> &#123;</div><div class="line">		<span class="keyword">id</span> obj = [<span class="built_in">NSObject</span> alloc] init];</div><div class="line">    &#125;</div></pre></td></tr></table></figure>
+<p><code>Apple</code>文档中提到：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">@autoreleasepool blocks are more efficient than using an instance of NSAutoreleasePool directly; you can also use them even if you do not use ARC.</div></pre></td></tr></table></figure></p>
+<p>不管是<code>MRC</code>还是<code>ARC</code>最好使用@autoreleasepool blocks。<br><a id="more"></a></p>
+<h2 id="autoreleasepool"><a href="#autoreleasepool" class="headerlink" title="@autoreleasepool"></a>@autoreleasepool</h2><p>上面提到的使用<code>@autoreleasepool</code>来手动创建并释放<code>autorelease</code><br><code>@autoreleasepool</code> 使用<code>clang</code>编译之后</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line"> <span class="comment">/* @autoreleasepool */</span> </div><div class="line">&#123; </div><div class="line">	__AtAutoreleasePool __autoreleasepool; </div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p><code>@autoreleasepool</code>被转转换成<code>__AtAutoreleasePool</code> 结构体类型</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">struct</span> __AtAutoreleasePool </div><div class="line">&#123;</div><div class="line">  __AtAutoreleasePool() </div><div class="line">  &#123;</div><div class="line">		atautoreleasepoolobj = objc_autoreleasePoolPush();</div><div class="line">  &#125;</div><div class="line">  ~__AtAutoreleasePool() </div><div class="line">  &#123;</div><div class="line">  		objc_autoreleasePoolPop(atautoreleasepoolobj);</div><div class="line">  &#125;</div><div class="line">  <span class="keyword">void</span> * atautoreleasepoolobj;</div><div class="line">&#125;;</div></pre></td></tr></table></figure>
+<p>可以看到 <code>__AtAutoreleasePool()</code> 构造函数调用<code>objc_autoreleasePoolPush()</code>,<code>~__AtAutoreleasePool()</code> 析构函数调用 <code>objc_autoreleasePoolPop()</code></p>
+<p>在 <code>MRC</code> 中我们使用 <code>NSAutoreleasePool</code> 来创建AutoreleasePool,那么相应的实现如下：</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line"><span class="built_in">NSAutoreleasePool</span> *pool = [<span class="built_in">NSAutoreleasePool</span> alloc] init];</div><div class="line"><span class="comment">// 相当于调用构造函数也就是 objc_autoreleasePoolPush();</span></div><div class="line">[pool drain];</div><div class="line"><span class="comment">// 相当于调用析构函数也就是 objc_autoreleasePoolPop(pool);</span></div></pre></td></tr></table></figure>
+<p><code>objc_autoreleasePoolPush</code> 和 <code>objc_autoreleasePoolPop</code> 是什么呢？</p>
+<p><code>objc_autoreleasePoolPush</code> 和 <code>objc_autoreleasePoolPop</code> 实现需要从<a href="https://opensource.apple.com/tarballs/objc4/" target="_blank" rel="external">runtime</a>源代码看到,文中的代码的是最新的<code>objc4-706.tar.gz</code></p>
+<p>在 <code>NSObject.mm</code> 文件中：<br><img src="http://ojaltanzc.bkt.clouddn.com/2016-12-13-aotureleasepool/2.png" alt="NSObject.mm"></p>
+<p>实际上是调用<code>AutoreleasePoolPage</code>的<code>push</code>和<code>pop</code>两个类方法</p>
+<h3 id="AutoreleasePoolPage"><a href="#AutoreleasePoolPage" class="headerlink" title="AutoreleasePoolPage"></a>AutoreleasePoolPage</h3><p>首先来看一下<code>AutoreleasePoolPage</code>这个类</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div></pre></td><td class="code"><pre><div class="line"><span class="meta">#   <span class="meta-keyword">define</span> EMPTY_POOL_PLACEHOLDER ((id*)1)</span></div><div class="line"></div><div class="line"><span class="meta">#   <span class="meta-keyword">define</span> POOL_BOUNDARY nil</span></div><div class="line">    <span class="keyword">static</span> <span class="keyword">pthread_key_t</span> <span class="keyword">const</span> key = AUTORELEASE_POOL_KEY;</div><div class="line">    <span class="keyword">static</span> <span class="keyword">uint8_t</span> <span class="keyword">const</span> SCRIBBLE = <span class="number">0xA3</span>;  <span class="comment">// 0xA3A3A3A3 after releasing</span></div><div class="line">    <span class="keyword">static</span> <span class="keyword">size_t</span> <span class="keyword">const</span> SIZE = </div><div class="line">#<span class="keyword">if</span> PROTECT_AUTORELEASEPOOL</div><div class="line">        PAGE_MAX_SIZE;  <span class="comment">// must be multiple of vm page size</span></div><div class="line"><span class="meta">#<span class="meta-keyword">else</span></span></div><div class="line">        PAGE_MAX_SIZE;  <span class="comment">// size and alignment, power of 2</span></div><div class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></div><div class="line">    <span class="keyword">static</span> <span class="keyword">size_t</span> <span class="keyword">const</span> COUNT = SIZE / <span class="keyword">sizeof</span>(id);</div><div class="line"></div><div class="line">    <span class="keyword">magic_t</span> <span class="keyword">const</span> magic;</div><div class="line">    id *next;</div><div class="line">    <span class="keyword">pthread_t</span> <span class="keyword">const</span> thread;</div><div class="line">    AutoreleasePoolPage * <span class="keyword">const</span> parent;</div><div class="line">    AutoreleasePoolPage *child;</div><div class="line">    <span class="keyword">uint32_t</span> <span class="keyword">const</span> depth;</div><div class="line">    <span class="keyword">uint32_t</span> hiwat;</div></pre></td></tr></table></figure>
+<p><img src="http://ojaltanzc.bkt.clouddn.com/2016-12-13-aotureleasepool/AutoreleasePoolPage.png" alt="AutoreleasePoolPage"></p>
+<ul>
+<li><code>magic</code> 检查校验完整性的变量</li>
+<li><code>next</code>  指向新加入的autrelease对象下一个位置如下图：</li>
+</ul>
+<p><img src="http://ojaltanzc.bkt.clouddn.com/2016-12-13-aotureleasepool/next.png" alt="next"></p>
+<ul>
+<li><code>thread</code> page当前所在的线程</li>
+<li><code>parent</code>    父节点 指向前一个page</li>
+<li><code>child</code>    子节点 指向下一个page</li>
+<li><code>depth</code> 链表的深度，节点个数</li>
+<li><p><code>hiwat</code> high water mark 数据容纳的一个上限</p>
+</li>
+<li><p><code>EMPTY_POOL_PLACEHOLDER</code> 空池占位</p>
+</li>
+<li><p><code>POOL_BOUNDARY</code> 是一个边界对象 <code>nil</code>,之前的源代码变量名是 <code>POOL_SENTINEL</code>哨兵对象,用来区别每个<code>page</code>即每个 <code>AutoreleasePoolPage</code> 边界</p>
+</li>
+<li><p><code>PAGE_MAX_SIZE</code> 定义的大小在下图可以看到:</p>
+</li>
+</ul>
+<p><img src="http://ojaltanzc.bkt.clouddn.com/2016-12-13-aotureleasepool/PAGE_MAX_SIZE.png" alt="PAGE_MAX_SIZE"></p>
+<ul>
+<li><code>PAGE_MAX_SIZE</code> = 4096, 为什么是4096呢？其实就是虚拟内存每个扇区4096个字节,<a href="https://zh.wikipedia.org/zh-hans/4K%E5%AF%B9%E9%BD%90" target="_blank" rel="external">4K对齐</a>的说法。</li>
+<li><code>COUNT</code> 一个<code>page</code>里对象数</li>
+</ul>
+<p><strong>在自动释放池中每一个<code>AutoreleasePoolPage</code>都是以双链表的形式连接起来的：</strong></p>
+<p><img src="http://ojaltanzc.bkt.clouddn.com/2016-12-13-aotureleasepool/Pool.png" alt="Pool"></p>
+<p><strong><code>parent</code> 指向前一个 <code>page</code> , <code>child</code> 指向下一个 <code>page</code></strong></p>
+<h2 id="push"><a href="#push" class="headerlink" title="push"></a>push</h2><p><img src="http://ojaltanzc.bkt.clouddn.com/2016-12-13-aotureleasepool/push.png" alt="PUSH"><br>每当自动释放池调用<code>objc_autoreleasePoolPush</code>时都会把边界对象放进栈顶,然后返回边界对象,用于释放。<br><figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">atautoreleasepoolobj = objc_autoreleasePoolPush();</div></pre></td></tr></table></figure></p>
+<p><code>atautoreleasepoolobj</code> 就是返回的边界对象</p>
+<p><code>push</code>就是压栈的操作,先加入边界对象然后添加A对象在边界对象之后,下一个B对象压入A对象之后,就像羽毛球筒放羽毛球一样</p>
+<h2 id="pop"><a href="#pop" class="headerlink" title="pop"></a>pop</h2><p><img src="http://ojaltanzc.bkt.clouddn.com/2016-12-13-aotureleasepool/pop.png" alt="POP"><br>自动释放池释放是传入 <code>push</code> 返回的边界对象,</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">objc_autoreleasePoolPop(atautoreleasepoolobj);</div></pre></td></tr></table></figure>
+<p>然后将边界对象指向的这一页 <code>AutoreleasePoolPage</code> 内的对象释放</p>
+<h2 id="End"><a href="#End" class="headerlink" title="@End"></a>@End</h2><p> <strong>总结：</strong></p>
+<ol>
+<li>自动释放池是一个个 <code>AutoreleasePoolPage</code> 组成的一个<code>page</code>是4096字节大小,每个 <code>AutoreleasePoolPage</code> 以双向链表连接起来形成一个自动释放池</li>
+<li><code>pop</code> 时是传入边界对象,然后对<code>page</code> 中的对象发送<code>release</code> 的消息</li>
+</ol>
+<p>文章有什么理解不是很到位的希望指出</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
+<li><a href="https://book.douban.com/subject/24720270/" target="_blank" rel="external">《objc高级编程:iOS与OS X多线程和内存管理》</a></li>
+<li><a href="http://draveness.me/autoreleasepool/" target="_blank" rel="external">自动释放池的前世今生 —- 深入解析 autoreleasepool</a></li>
+<li><a href="https://developer.apple.com/reference/foundation/nsautoreleasepool#//apple_ref/occ/cl/NSAutoreleasePool" target="_blank" rel="external">NSAutoreleasePool</a></li>
+<li><a href="http://blog.sunnyxx.com/2014/10/15/behind-autorelease/" target="_blank" rel="external">黑幕背后的Autorelease</a></li>
+</ul>
+<p>&lt;!— more –&gt;</p>
+</div></article></div></main><footer><div class="paginator"><a href="/2016/12/21/NSNotificationCenter实现原理？/" class="prev">PREV</a><a href="/2016/12/10/Learn Swift/" class="next">NEXT</a></div><div id="disqus_thread"></div><script>var disqus_shortname = 'gwrcode';
+var disqus_identifier = '2016/12/13/autoreleasepool是如何实现的？/';
+var disqus_title = 'autoreleasepool是如何实现的？';
+var disqus_url = 'https://github.com/VeinGuo/2016/12/13/autoreleasepool是如何实现的？/';
+(function() {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();</script><script id="dsq-count-scr" src="//gwrcode.disqus.com/count.js" async></script><div class="copyright"><p>© 2016 - 2017 <a href="https://github.com/VeinGuo">Vein</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> and <a href="https://github.com/pinggod/hexo-theme-apollo" target="_blank">hexo-theme-apollo</a>.</p></div></footer></div><script async src="//cdn.bootcss.com/mathjax/2.7.0/MathJax.js?config=TeX-MML-AM_CHTML" integrity="sha384-crwIf/BuaWM9rM65iM+dWFldgQ1Un8jWZMuh3puxb8TOY9+linwLoI7ZHZT+aekW" crossorigin="anonymous"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-90661596-1",'auto');ga('send','pageview');</script></body></html>

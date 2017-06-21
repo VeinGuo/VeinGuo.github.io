@@ -1,0 +1,65 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><title> 实现一个iOS渐变背景动画效果的Switch · Vein</title><meta name="description" content="实现一个iOS渐变背景动画效果的Switch - Vein"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/css/apollo.css"><link rel="search" type="application/opensearchdescription+xml" href="https://github.com/VeinGuo/atom.xml" title="Vein"></head><body><div class="wrap"><header><a href="/" class="logo-link"><img src="/favicon.png" alt="logo"></a><ul class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" class="nav-list-link">BLOG</a></li><li class="nav-list-item"><a href="/archives/" target="_self" class="nav-list-link">ARCHIVE</a></li><li class="nav-list-item"><a href="http://weibo.com/woshirucichenlun" target="_blank" class="nav-list-link">WEIBO</a></li><li class="nav-list-item"><a href="https://github.com/VeinGuo" target="_blank" class="nav-list-link">GITHUB</a></li><li class="nav-list-item"><a href="/atom.xml" target="_self" class="nav-list-link">RSS</a></li></ul></header><main class="container"><div class="post"><article class="post-block"><h1 class="post-title">实现一个iOS渐变背景动画效果的Switch</h1><div class="post-info">Feb 16, 2017</div><div class="post-content"><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>在dribbble看到一个Switch动画效果就手痒想实现，下面就是我实现的思路。</p>
+<h2 id="源代码"><a href="#源代码" class="headerlink" title="源代码"></a>源代码</h2><p>GitHub地址：<a href="https://github.com/VeinGuo/VGGradientSwitch">VGGradientSwitch</a><br>如果觉得不错，欢迎点star。</p>
+<h2 id="设计图"><a href="#设计图" class="headerlink" title="设计图"></a>设计图</h2><p>来自dribbble上的设计作者 <a href="https://dribbble.com/nick_buturishvili" target="_blank" rel="external">Nick Buturishvili</a><br><img src="https://d13yacurqjgara.cloudfront.net/users/408943/screenshots/2272690/switch.gif" alt="image"></p>
+<h2 id="效果图"><a href="#效果图" class="headerlink" title="效果图"></a>效果图</h2><p><img src="http://ojaltanzc.bkt.clouddn.com/switch_button_1.gif" alt="image"><br><a id="more"></a></p>
+<h2 id="思路"><a href="#思路" class="headerlink" title="思路"></a>思路</h2><ul>
+<li>首先解刨一下设计图</li>
+</ul>
+<ol>
+<li>外观和iOS原生UISwitch相同</li>
+<li>观察动图发现Switch背景图为渐变色，这也是这个开关设计的一大亮点</li>
+<li>开关上的纽扣，打开时状态是一个勾，关闭时是一个叉。</li>
+<li>打开动画，勾边线放大移动边做形变变成点再变换成叉放大后恢复原状，背景颜色由青色转换到橘黄色。</li>
+<li>关闭动画，叉边先放大移动边做形变再变成勾放大后恢复原状，背景颜色由橘黄色转换到青色</li>
+</ol>
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><ul>
+<li>渐变背景图是通过<code>CAGradientLayer</code>实现。通过设计图取色拿到颜色十六进制(0x08ded6,0x18deb9,0xef9c29,0xe76b39)四个颜色,创建出一个3倍的switch宽度渐变图<br>如图: <img src="http://upload-images.jianshu.io/upload_images/3672149-30b1f130c7724472.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="image"></li>
+</ul>
+<p>代码如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line">CAGradientLayer *gradientLayer = [CAGradientLayer layer];</div><div class="line">gradientLayer.locations = @[@0, @.33, @.63, @1];</div><div class="line">gradientLayer.startPoint = CGPointMake(0, 0);</div><div class="line">gradientLayer.endPoint = CGPointMake(1, 0);</div><div class="line">gradientLayer.frame = CGRectMake(0, 0, self.frame.size.width * 3, self.frame.size.height);</div></pre></td></tr></table></figure>
+<ul>
+<li>边框使用<code>UIBezierPath</code>设置一个圆角边框</li>
+</ul>
+<p><img src="http://upload-images.jianshu.io/upload_images/3672149-16dc2c56abc88cf2.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="image"></p>
+<ul>
+<li>勾、点和叉的实现使用到<code>UIBezierPath</code>提供path，然后<code>CAShapeLayer</code>创建，勾图形实现代码如下：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div></pre></td><td class="code"><pre><div class="line">UIBezierPath *tickPath = [UIBezierPath bezierPath];</div><div class="line">[tickPath moveToPoint:CGPointMake(self.frame.size.width/8 * 3, self.frame.size.width/2)];</div><div class="line">CGPoint p1 = CGPointMake(self.frame.size.width/2, self.frame.size.width/8 * 5);</div><div class="line">[tickPath addLineToPoint:p1];</div><div class="line">CGPoint p2 = CGPointMake(self.frame.size.width/8 * 6, self.frame.size.width/8 * 3);</div><div class="line">[tickPath addLineToPoint:p2];</div><div class="line"></div><div class="line">CAShapeLayer *layer = [[CAShapeLayer alloc] init];</div><div class="line">layer.lineCap = kCALineCapRound;</div><div class="line">layer.lineJoin = kCALineJoinRound;</div><div class="line">layer.fillColor = [UIColor clearColor].CGColor;</div><div class="line">layer.strokeColor = [UIColor whiteColor].CGColor;</div><div class="line">layer.lineWidth = 2;</div><div class="line">layer.path = tickPath.CGPath;</div></pre></td></tr></table></figure>
+<p><img src="http://upload-images.jianshu.io/upload_images/3672149-8012e458f4808968.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="image"></p>
+<ul>
+<li>渐变背景颜色的动画效果，笔者是将<code>CAGradientLayer</code>添加到一个UIView上然后直接使用，UIView的动画方法然后做位移，代码如下：</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line">[UIView animateKeyframesWithDuration:.5 delay:.1 options:UIViewKeyframeAnimationOptionCalculationModePaced animations:^&#123;</div><div class="line">        self.gradientView.frame = CGRectMake(-self.frame.size.width *2, 0, self.frame.size.width *3, self.frame.size.height);</div><div class="line">    &#125; completion:^(BOOL finished) &#123;</div><div class="line">    </div><div class="line">    &#125;];</div></pre></td></tr></table></figure>
+<p><img src="http://upload-images.jianshu.io/upload_images/3672149-e93f0003fde40f55.gif?imageMogr2/auto-orient/strip" alt="image"></p>
+<ul>
+<li>图形形变动画主要利用<code>Core Animation</code>实现,用到了<code>CAKeyframeAnimation</code>、<code>CABasicAnimation</code>、<code>CAAnimationGroup</code></li>
+<li>勾-&gt;点动画  先放大勾后然后做缩小形变成点 </li>
+<li>点-&gt;勾动画  做形变成勾后做放大</li>
+<li><p>动画使用了”path”和”transform”，形变动画使用path提供路径数组，这里提供原本勾的路径和点的路径这样路径就从勾形变到点<br>代码如下:</p>
+</li>
+<li><p>放大动画 使用<code>CABasicAnimation</code></p>
+</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div></pre></td><td class="code"><pre><div class="line">CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@&quot;transform&quot;];</div><div class="line">CATransform3D tr = CATransform3DIdentity;</div><div class="line">tr = CATransform3DTranslate(tr, _rect.size.width/2, _rect.size.height/2, 0);</div><div class="line">tr = CATransform3DScale(tr, 1.2, 1.2, 1);</div><div class="line">tr = CATransform3DTranslate(tr, -_rect.size.width/2, -_rect.size.height/2, 0);</div><div class="line">animation.toValue = [NSValue valueWithCATransform3D:tr];</div><div class="line">animation.autoreverses = YES;</div><div class="line">animation.timingFunction  = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];</div></pre></td></tr></table></figure>
+<ul>
+<li>形变动画 使用<code>CAKeyframeAnimation</code>具体的使用可以Google一下这里就不多赘言,<code>values</code>传入的是勾的path和点path</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">CAKeyframeAnimation *animation = [CAKeyframeAnimation animationWithKeyPath:@&quot;path&quot;];</div><div class="line">animation.values = values;</div><div class="line">animation.keyTimes = keyTimes;</div><div class="line">animation.beginTime = beginTime;</div></pre></td></tr></table></figure>
+<ul>
+<li>使用<code>CAAnimationGroup</code>做组合动画,组合动画代理方法可以判断组合动画是否完成，<code>&lt;CAAnimationDelegate&gt;</code> 代码如下:</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line">// scaleAnimation 放大 lineAnimation线条形变</div><div class="line">  CAAnimationGroup *animationGroup = [CAAnimationGroup animation];</div><div class="line">  animationGroup.animations = @[scaleAnimation,lineAnimation];</div><div class="line">  animationGroup.duration = .5;</div><div class="line">  animationGroup.repeatCount = 1;</div><div class="line">  animationGroup.removedOnCompletion = NO;</div><div class="line">  animationGroup.fillMode = kCAFillModeForwards;</div><div class="line">  animationGroup.timingFunction  = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];</div><div class="line">  animationGroup.delegate = self;</div><div class="line">  </div><div class="line">  // CAAnimationDelegate  动画是否结束</div><div class="line">  - (void)animationDidStop:(CAAnimation *)anim finished:(BOOL)flag&#123;</div><div class="line">  &#125;</div></pre></td></tr></table></figure>
+<p><img src="http://upload-images.jianshu.io/upload_images/3672149-6989c7df61f3ff5b.gif?imageMogr2/auto-orient/strip" alt="image"></p>
+<ul>
+<li>剩下的就是移动这个按钮然后由点形变成叉这里就不再说明，可以直接看GitHub代码,以上就是分解动画的一些思路和解决办法，但是动画要流畅和交互不违和还需要细微调整</li>
+<li>有什么代码和实现的效果建议可以提issue给我，如果喜欢的话点一下 star 哦</li>
+</ul>
+</div></article></div></main><footer><div class="paginator"><a href="/2017/06/20/2017-6-15-iOS-Swift封装一个视频播放器VGPlayer/" class="prev">PREV</a><a href="/2016/12/29/iOS-Memory-management/" class="next">NEXT</a></div><div id="disqus_thread"></div><script>var disqus_shortname = 'gwrcode';
+var disqus_identifier = '2017/02/16/2017-2-16-iOS-Gradient-Switch/';
+var disqus_title = '实现一个iOS渐变背景动画效果的Switch';
+var disqus_url = 'https://github.com/VeinGuo/2017/02/16/2017-2-16-iOS-Gradient-Switch/';
+(function() {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();</script><script id="dsq-count-scr" src="//gwrcode.disqus.com/count.js" async></script><div class="copyright"><p>© 2016 - 2017 <a href="https://github.com/VeinGuo">Vein</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> and <a href="https://github.com/pinggod/hexo-theme-apollo" target="_blank">hexo-theme-apollo</a>.</p></div></footer></div><script async src="//cdn.bootcss.com/mathjax/2.7.0/MathJax.js?config=TeX-MML-AM_CHTML" integrity="sha384-crwIf/BuaWM9rM65iM+dWFldgQ1Un8jWZMuh3puxb8TOY9+linwLoI7ZHZT+aekW" crossorigin="anonymous"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-90661596-1",'auto');ga('send','pageview');</script></body></html>

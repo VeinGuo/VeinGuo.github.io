@@ -1,0 +1,63 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><title>  · Vein</title><meta name="description" content=" - Vein"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/css/apollo.css"><link rel="search" type="application/opensearchdescription+xml" href="https://github.com/VeinGuo/atom.xml" title="Vein"></head><body><div class="wrap"><header><a href="/" class="logo-link"><img src="/favicon.png" alt="logo"></a><ul class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" class="nav-list-link">BLOG</a></li><li class="nav-list-item"><a href="/archives/" target="_self" class="nav-list-link">ARCHIVE</a></li><li class="nav-list-item"><a href="http://weibo.com/woshirucichenlun" target="_blank" class="nav-list-link">WEIBO</a></li><li class="nav-list-item"><a href="https://github.com/VeinGuo" target="_blank" class="nav-list-link">GITHUB</a></li><li class="nav-list-item"><a href="/atom.xml" target="_self" class="nav-list-link">RSS</a></li></ul></header><main class="container"><div class="post"><article class="post-block"><h1 class="post-title"></h1><div class="post-info">Jun 20, 2017</div><div class="post-content"><h1 id="Swift-封装一个视频播放器-VGPlayer"><a href="#Swift-封装一个视频播放器-VGPlayer" class="headerlink" title="Swift 封装一个视频播放器 VGPlayer"></a>Swift 封装一个视频播放器 VGPlayer</h1><p><img src="http://upload-images.jianshu.io/upload_images/3672149-555ba04e6c5a5e30.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="Banners.png"></p>
+<h2 id="前言"><a href="#前言" class="headerlink" title="# 前言"></a># 前言</h2><p>之前学习了 Swift 一直想做一个项目，这次下定决心花了近1个月的空闲时间基于 AVPlayer 封装了一个视频播放器。</p>
+<h2 id="源代码"><a href="#源代码" class="headerlink" title="# 源代码"></a># 源代码</h2><ul>
+<li>GitHub地址：<a href="https://github.com/VeinGuo/VGPlayer">VGPlayer</a></li>
+<li>有什么意见建议可以提 issues,在博文下留言，如果觉得不错，欢迎点star。</li>
+</ul>
+<h2 id="演示"><a href="#演示" class="headerlink" title="# 演示"></a># 演示</h2><p><img src="http://upload-images.jianshu.io/upload_images/3672149-8d4002b808f1637d.gif?imageMogr2/auto-orient/strip" alt="demo1.gif"></p>
+<p><img src="http://upload-images.jianshu.io/upload_images/3672149-d7eb8ea47b03b5e4.gif?imageMogr2/auto-orient/strip" alt="demo2.gif"></p>
+<a id="more"></a>
+<h2 id="功能"><a href="#功能" class="headerlink" title="# 功能"></a># 功能</h2><ul>
+<li>集成了视频播放器常有的手势，包括单击显示控制视图，双击暂停，水平滑动快进、后退，竖直滑动亮度和音量调节。</li>
+<li>全屏播放，自适应手机屏幕旋转方向。</li>
+<li>自定义控制视图</li>
+</ul>
+<h2 id="实现思路"><a href="#实现思路" class="headerlink" title="# 实现思路"></a># 实现思路</h2><p><img src="http://upload-images.jianshu.io/upload_images/3672149-97c3599a629ed811.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="流程图.png"></p>
+<h4 id="VGPlayer"><a href="#VGPlayer" class="headerlink" title="VGPlayer"></a>VGPlayer</h4><p>VGPlayer是一个对AVPlayer封装提供播放功能，displayView为播放器画面绘制。<br>主要是使用了以下几个类：</p>
+<ul>
+<li>AVURLAsset是 AVAsset的子类，用来本地或者网络视频地址的初始化网络请求，也可以用来获取视频每一帧的画面来实现滑动提前预览图的功能（后续应该会版本迭代加上此功能）</li>
+<li>AVPlayerItem 是对AVPlayer播放的视频数据管理，对播放的Asset资源进行记录，提供或者视频的时间，播放状态等。</li>
+<li>AVPlayer 调控数据和视图</li>
+<li>AVPlayerLayer 进行视频视图绘制</li>
+</ul>
+<p>VGPlayer封装AVPlayer提供给调用者可选代理方法</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// player delegate</span></div><div class="line">    <span class="comment">// play state</span></div><div class="line">    <span class="function"><span class="keyword">func</span> <span class="title">vgPlayer</span><span class="params">(<span class="number">_</span> player: VGPlayer, stateDidChange state: VGPlayerState)</span></span></div><div class="line">    <span class="comment">// playe Duration</span></div><div class="line">    <span class="function"><span class="keyword">func</span> <span class="title">vgPlayer</span><span class="params">(<span class="number">_</span> player: VGPlayer, playerDurationDidChange currentDuration: TimeInterval, totalDuration: TimeInterval)</span></span></div><div class="line">    <span class="comment">// buffer state</span></div><div class="line">    <span class="function"><span class="keyword">func</span> <span class="title">vgPlayer</span><span class="params">(<span class="number">_</span> player: VGPlayer, bufferStateDidChange state: VGPlayerBufferstate)</span></span></div><div class="line">    <span class="comment">// buffered Duration</span></div><div class="line">    <span class="function"><span class="keyword">func</span> <span class="title">vgPlayer</span><span class="params">(<span class="number">_</span> player: VGPlayer, bufferedDidChange bufferedDuration: TimeInterval, totalDuration: TimeInterval)</span></span></div><div class="line">    <span class="comment">// play error</span></div><div class="line">    <span class="function"><span class="keyword">func</span> <span class="title">vgPlayer</span><span class="params">(<span class="number">_</span> player: VGPlayer, playerFailed error: VGPlayerError)</span></span></div></pre></td></tr></table></figure>
+<h4 id="VGPlayerView"><a href="#VGPlayerView" class="headerlink" title="VGPlayerView"></a>VGPlayerView</h4><ul>
+<li>VGPlayerView负责画面的展示,，只作为展示，而绘制层则是AVPlayerLayer提供，可继承此类进行控制视图的自定义</li>
+<li>VGPlayerView封装AVPlayerLayer提供可选代理方法</li>
+</ul>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// player view delegate</span></div><div class="line">    <span class="comment">/// fullscreen</span></div><div class="line">    <span class="function"><span class="keyword">func</span> <span class="title">vgPlayerView</span><span class="params">(<span class="number">_</span> playerView: VGPlayerView, willFullscreen fullscreen: Bool)</span></span></div><div class="line">    <span class="comment">/// close play view</span></div><div class="line">    <span class="function"><span class="keyword">func</span> <span class="title">vgPlayerView</span><span class="params">(didTappedClose playerView: VGPlayerView)</span></span></div><div class="line">    <span class="comment">/// displaye control</span></div><div class="line">    <span class="function"><span class="keyword">func</span> <span class="title">vgPlayerView</span><span class="params">(didDisplayControl playerView: VGPlayerView)</span></span></div></pre></td></tr></table></figure>
+<h4 id="VGPlayerError"><a href="#VGPlayerError" class="headerlink" title="VGPlayerError"></a>VGPlayerError</h4><ul>
+<li>VGPlayerError一个 struct 用来播放出现Error时返回</li>
+</ul>
+<h2 id="细节调整"><a href="#细节调整" class="headerlink" title="# 细节调整"></a># 细节调整</h2><ul>
+<li>后台播放的实现<br>设置工程</li>
+</ul>
+<p><img src="http://upload-images.jianshu.io/upload_images/3672149-679c678013de6ce7.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="backgroundModes.png"></p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// AppDelegate settings</span></div><div class="line"> <span class="function"><span class="keyword">func</span> <span class="title">application</span><span class="params">(<span class="number">_</span> application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?)</span></span> -&gt; <span class="type">Bool</span> &#123;</div><div class="line">        <span class="comment">// Override point for customization after application launch.</span></div><div class="line">        <span class="keyword">do</span></div><div class="line">        &#123;</div><div class="line">            <span class="keyword">try</span> <span class="type">AVAudioSession</span>.sharedInstance().setCategory(<span class="type">AVAudioSessionCategoryPlayback</span>)</div><div class="line">        &#125;</div><div class="line">        <span class="keyword">catch</span> <span class="keyword">let</span> error <span class="keyword">as</span> <span class="type">NSError</span></div><div class="line">        &#123;</div><div class="line">            <span class="built_in">print</span>(error)</div><div class="line">        &#125;</div><div class="line">        <span class="keyword">return</span> <span class="literal">true</span></div><div class="line">    &#125;</div></pre></td></tr></table></figure>
+<p>设置VGPlayer的Background mode<br><figure class="highlight swift"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">self</span>.player.backgroundMode = .proceed</div></pre></td></tr></table></figure></p>
+<ul>
+<li>VGPlayerUtils 提供判断视频类型方法和一些通用的方法</li>
+<li>UIButton+VGPlayer 扩展按钮点击范围</li>
+<li>Timer+VGPlayer 解决Timer的 retain cycle问题</li>
+</ul>
+<h2 id="参考"><a href="#参考" class="headerlink" title="# 参考"></a># 参考</h2><ul>
+<li><a href="https://techblog.toutiao.com/2017/03/28/fullscreen/" target="_blank" rel="external">https://techblog.toutiao.com/2017/03/28/fullscreen/</a></li>
+<li><a href="https://developer.apple.com/library/content/qa/qa1668/_index.html" target="_blank" rel="external">https://developer.apple.com/library/content/qa/qa1668/_index.html</a></li>
+<li><a href="https://developer.apple.com/documentation/avfoundation" target="_blank" rel="external">https://developer.apple.com/documentation/avfoundation</a></li>
+<li><a href="https://stackoverflow.com/questions/808503/uibutton-making-the-hit-area-larger-than-the-default-hit-area/13977921" target="_blank" rel="external">https://stackoverflow.com/questions/808503/uibutton-making-the-hit-area-larger-than-the-default-hit-area/13977921</a></li>
+<li><a href="https://gist.github.com/onevcat/2d1ceff1c657591eebde" target="_blank" rel="external">https://gist.github.com/onevcat/2d1ceff1c657591eebde</a></li>
+</ul>
+<h2 id="总结"><a href="#总结" class="headerlink" title="# 总结"></a># 总结</h2><ul>
+<li>了解了AVPlayer的整体结构，对播放过程完整的思路和一些遇到的问题。</li>
+<li>踩了屏幕旋转细节、按钮点击范围调整的一些交互细节的坑</li>
+</ul>
+</div></article></div></main><footer><div class="paginator"><a href="/2017/02/16/2017-2-16-iOS-Gradient-Switch/" class="next">NEXT</a></div><div id="disqus_thread"></div><script>var disqus_shortname = 'gwrcode';
+var disqus_identifier = '2017/06/20/2017-6-15-iOS-Swift封装一个视频播放器VGPlayer/';
+var disqus_title = '';
+var disqus_url = 'https://github.com/VeinGuo/2017/06/20/2017-6-15-iOS-Swift封装一个视频播放器VGPlayer/';
+(function() {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();</script><script id="dsq-count-scr" src="//gwrcode.disqus.com/count.js" async></script><div class="copyright"><p>© 2016 - 2017 <a href="https://github.com/VeinGuo">Vein</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> and <a href="https://github.com/pinggod/hexo-theme-apollo" target="_blank">hexo-theme-apollo</a>.</p></div></footer></div><script async src="//cdn.bootcss.com/mathjax/2.7.0/MathJax.js?config=TeX-MML-AM_CHTML" integrity="sha384-crwIf/BuaWM9rM65iM+dWFldgQ1Un8jWZMuh3puxb8TOY9+linwLoI7ZHZT+aekW" crossorigin="anonymous"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-90661596-1",'auto');ga('send','pageview');</script></body></html>
